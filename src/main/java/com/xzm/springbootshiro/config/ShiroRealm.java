@@ -1,6 +1,10 @@
 package com.xzm.springbootshiro.config;
 
+import com.xzm.springbootshiro.entity.PermissionEntity;
+import com.xzm.springbootshiro.entity.RoleEntity;
 import com.xzm.springbootshiro.entity.UserEntity;
+import com.xzm.springbootshiro.repository.PermissionRepository;
+import com.xzm.springbootshiro.repository.RoleRepository;
 import com.xzm.springbootshiro.repository.UserRepository;
 import org.apache.shiro.authc.*;
 import org.apache.shiro.authz.AuthorizationInfo;
@@ -18,9 +22,13 @@ import java.util.Optional;
 public class ShiroRealm extends AuthorizingRealm {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
 
-    public ShiroRealm(UserRepository userRepository) {
+    public ShiroRealm(UserRepository userRepository, RoleRepository roleRepository, PermissionRepository permissionRepository) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     @Override
@@ -34,13 +42,34 @@ public class ShiroRealm extends AuthorizingRealm {
         userEntity.setUsername(username);
         Optional<UserEntity> userInfo = userRepository.findOne(Example.of(userEntity));
         if(!userInfo.isPresent())throw new IncorrectCredentialsException("用户不存在！");
-
+        System.out.println(userInfo.get().getUserRoleEntity());
         SimpleAuthorizationInfo authorizationInfo = new SimpleAuthorizationInfo();
+        if(userInfo.get().getUserRoleEntity().size() > 0){
+            userInfo.get().getUserRoleEntity().forEach(roleInfo->{
+                // 这里把角色ID当成名字存入了
+                authorizationInfo.addRole(roleInfo.getRole_id().toString());
+                // 获取权限名,第一步通过角色ID去获取权限List
+                System.out.println(roleInfo.getRole_id());
+                RoleEntity roleEntity = new RoleEntity();
+                roleEntity.setId(roleInfo.getRole_id());
+                Optional<RoleEntity> roleOne = roleRepository.findOne(Example.of(roleEntity));
+                if(!roleOne.isPresent())throw new IncorrectCredentialsException("角色不存在！");
+                System.out.println(roleOne.get().getRolePermissionEntities());
+                roleOne.get().getRolePermissionEntities().forEach(val->{
+                    PermissionEntity permissionEntity = new PermissionEntity();
+                    permissionEntity.setId(val.getPermission_id());
+                    Optional<PermissionEntity> permissionInfo = permissionRepository.findOne(Example.of(permissionEntity));
+                    permissionInfo.ifPresent(entity -> {
+                        System.out.println("--------------------------------------");
+                        System.out.println(entity.getName());
+                        authorizationInfo.addStringPermission(entity.getName());
+                    });
+                });
 
-
-
-
-        return null;
+            });
+        }
+        System.out.println("用户权限:"+ authorizationInfo);
+        return authorizationInfo;
     }
 
     @Override
