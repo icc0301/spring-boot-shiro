@@ -37,7 +37,7 @@ public class ShiroRealm extends AuthorizingRealm {
         System.out.println("222222222222222222222222222");
         String username = (String) principalCollection.getPrimaryPrincipal();
         System.out.println(username);
-        // 通过username获取uid
+        // 通过username获取userRoleEntity
         UserEntity userEntity = new UserEntity();
         userEntity.setUsername(username);
         Optional<UserEntity> userInfo = userRepository.findOne(Example.of(userEntity));
@@ -48,6 +48,7 @@ public class ShiroRealm extends AuthorizingRealm {
             userInfo.get().getUserRoleEntity().forEach(roleInfo->{
                 // 这里把角色ID当成名字存入了
                 authorizationInfo.addRole(roleInfo.getRole_id().toString());
+                // addStringPermission代码部分......
                 // 获取权限名,第一步通过角色ID去获取权限List
                 System.out.println(roleInfo.getRole_id());
                 RoleEntity roleEntity = new RoleEntity();
